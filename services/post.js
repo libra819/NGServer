@@ -140,6 +140,17 @@ module.exports = {
             callback(0, error);
         }
     },
+    // 根據文章ID取得文章的留言
+    async getCommentsByPostId(postId, callback) {
+        const sql = "SELECT * FROM comments WHERE post_id = ? ORDER BY id DESC";
+        const params = [postId];
+        try {
+            const results = await mysql.query(sql, params);
+            callback(null, results);
+        } catch (error) {
+            callback(0, error);
+        }
+    },
     // 建立文章的留言
     async createComment(postId, content, authorId, guestName, ipAddress, callback) {
         const sql = "INSERT INTO comments (post_id, content, author_id, guest_name, ip_address) VALUES (?, ?, ?, ?, ?)";

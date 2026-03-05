@@ -2,7 +2,7 @@ var express = require('express');
 var posts = require('../services/post');
 var router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
-
+const jwt = require('jsonwebtoken');
 /* GET posts listing. */
 // 這個路由不需要驗證
 router.get('/', function (req, res, next) {
@@ -134,6 +134,7 @@ router.delete('/:id', authMiddleware, function (req, res, next) {
 
 // 根據文章ID取得文章的留言，不需要驗證
 router.get('/:id/comments', function (req, res, next) {
+    console.log("get comments by post id", req.params.id);
     const postId = req.params.id;
     posts.getCommentsByPostId(postId, (status, result) => {
         if (status === 0) {
@@ -142,15 +143,57 @@ router.get('/:id/comments', function (req, res, next) {
         res.json(result);
     });
 });
+const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || '你的_Google_reCAPTCHA_私鑰(Secret_Key)';
 // 根據文章ID新增文章的留言，不需要驗證
-router.post('/:id/comments', function (req, res, next) {
+router.post('/:id/comments', async function (req, res, next) {
     const postId = req.params.id;
-    const { content } = req.body;
-    const authorId = req.user.uuid || null; // 從 token 中取得使用者 ID
-    const guestName = req.body.guestName || null; // 從 token 中取得使用者 name
-    const ipAddress = req.body.ipAddress || null; // 從 token 中取得使用者 IP
+    // 接收前端傳來的資料，包含 recaptchaToken
+    const { content, guestName, recaptchaToken } = req.body;
+    // 手動解析 Token
+    let authorId = null;
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        try {
+            // 解析 Token，這裡的 secret 要與你登入時簽發的設定一致
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            authorId = decoded.uuid; // 成功解析出會員 ID
+            guestName = decoded.username;
+        } catch (err) {
+            // 💡 如果 Token 過期，回傳 401 讓 Angular 攔截器自動幫你換新 Token 並重送！
+            return res.status(401).json({ error: 'Token 已過期' });
+        }
+    }
+    // 取得使用者 IP (優先看 x-forwarded-for 避免被 Nginx 蓋掉)
+    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
 
-    posts.createComment(postId, content, authorId, guestName, ipAddress, (status, result) => {
+    // 1. 基本網址
+    const verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+
+    // 2. 使用 URLSearchParams 來自動處理編碼與格式
+    const params = new URLSearchParams();
+    params.append('secret', RECAPTCHA_SECRET_KEY);
+    params.append('response', recaptchaToken);
+
+    // 在 localhost 開發時，IP 通常是 '::1'，有時候傳送本地 IP 給 Google 會怪怪的
+    // remoteip 是選填的，建議在本地測試時先註解掉，上線再打開
+    // if (ipAddress) params.append('remoteip', ipAddress);
+
+    // 3. 發送 POST 請求 (URLSearchParams 會自動幫你加上正確的 Content-Type headers)
+    const recaptchaRes = await fetch(verifyUrl, {
+        method: 'POST',
+        body: params
+    });
+
+    const recaptchaData = await recaptchaRes.json();
+    // console.log('Google 驗證結果:', recaptchaData); // 加上這行方便除錯
+
+    if (!recaptchaData.success) {
+        return res.status(403).json({ error: "機器人驗證失敗，請重新勾選" });
+    }
+    const finalGuestName = authorId ? null : (guestName || '訪客');
+    console.log("create comment：", postId, content, authorId, finalGuestName, ipAddress);
+    posts.createComment(postId, content, authorId, finalGuestName, ipAddress, (status, result) => {
         if (status === 0) {
             return res.status(500).json({ error: result });
         }
