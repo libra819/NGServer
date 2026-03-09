@@ -16,12 +16,10 @@
 
 
 -- 傾印 blog 的資料庫結構
-DROP DATABASE IF EXISTS `blog`;
 CREATE DATABASE IF NOT EXISTS `blog` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;
 USE `blog`;
 
 -- 傾印  資料表 blog.comments 結構
-DROP TABLE IF EXISTS `comments`;
 CREATE TABLE IF NOT EXISTS `comments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `post_id` int(11) NOT NULL,
@@ -35,12 +33,11 @@ CREATE TABLE IF NOT EXISTS `comments` (
   KEY `author_id` (`author_id`),
   CONSTRAINT `comments_ibfk_1` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `comments_ibfk_2` FOREIGN KEY (`author_id`) REFERENCES `members` (`uuid`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- 取消選取資料匯出。
 
 -- 傾印  資料表 blog.members 結構
-DROP TABLE IF EXISTS `members`;
 CREATE TABLE IF NOT EXISTS `members` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uuid` char(36) NOT NULL DEFAULT uuid(),
@@ -58,7 +55,6 @@ CREATE TABLE IF NOT EXISTS `members` (
 -- 取消選取資料匯出。
 
 -- 傾印  資料表 blog.paswd_history 結構
-DROP TABLE IF EXISTS `paswd_history`;
 CREATE TABLE IF NOT EXISTS `paswd_history` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `member_id` char(36) NOT NULL,
@@ -72,7 +68,6 @@ CREATE TABLE IF NOT EXISTS `paswd_history` (
 -- 取消選取資料匯出。
 
 -- 傾印  資料表 blog.posts 結構
-DROP TABLE IF EXISTS `posts`;
 CREATE TABLE IF NOT EXISTS `posts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uuid` char(36) NOT NULL DEFAULT uuid(),
@@ -82,17 +77,17 @@ CREATE TABLE IF NOT EXISTS `posts` (
   `summary` varchar(500) NOT NULL,
   `content` text NOT NULL,
   `tags` varchar(200) NOT NULL,
+  `paswd` text DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `author_id` (`author_id`),
   CONSTRAINT `posts_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `members` (`uuid`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- 取消選取資料匯出。
 
 -- 傾印  資料表 blog.postsettings 結構
-DROP TABLE IF EXISTS `postsettings`;
 CREATE TABLE IF NOT EXISTS `postsettings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `posttype` varchar(50) NOT NULL,
