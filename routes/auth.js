@@ -8,7 +8,7 @@ var router = express.Router();
 // POST /api/auth/login
 router.post("/login", async function (req, res, next) {
   const { email, username, password } = req.body;
-  console.log(email, username, password);
+  // console.log(email, username, password);
   // 驗證使用者
   authService.login(email, username, password, (status, user) => {
     if (status === 0) {

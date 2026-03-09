@@ -33,7 +33,7 @@ const upload = multer({ storage: storage });
  */
 router.post('/image', authMiddleware, upload.single('image'), (req, res, next) => {
     // req.user 已經由 authMiddleware 解析出來了
-    console.log(`User ${req.user.uuid} is uploading an image.`);
+    // console.log(`User ${req.user.uuid} is uploading an image.`);
 
     if (!req.file) {
         return res.status(400).json({

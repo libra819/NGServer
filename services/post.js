@@ -87,9 +87,9 @@ module.exports = {
         }
     },
     // 建立文章
-    async createPost(title, content, summary, tags, authorId, category, callback) {
-        const sql = "INSERT INTO posts (title, content, summary, tags, author_id, category) VALUES (?, ?, ?, ?, ?, ?)";
-        const params = [title, content, summary, tags, authorId, category];
+    async createPost(title, content, summary, tags, authorId, category, paswd, callback) {
+        const sql = "INSERT INTO posts (title, content, summary, tags, author_id, category, paswd) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        const params = [title, content, summary, tags, authorId, category, paswd];
         try {
             const result = await mysql.query(sql, params);
             callback(null, result.insertId);

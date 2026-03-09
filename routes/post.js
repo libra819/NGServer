@@ -3,6 +3,7 @@ var posts = require('../services/post');
 var router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const jwt = require('jsonwebtoken');
+const bcrypt = require("bcryptjs");
 /* GET posts listing. */
 // 這個路由不需要驗證
 router.get('/', function (req, res, next) {
@@ -18,12 +19,17 @@ router.get('/', function (req, res, next) {
 });
 
 // 新增文章，需要驗證
-router.post('/addpost', authMiddleware, function (req, res, next) {
-    console.log(req.user);
+router.post('/addpost', authMiddleware, async function (req, res, next) {
     const { title, content, summary, tags, category } = req.body;
+    const pswd = req.body.pswd ? req.body.pswd : "";
     const authorId = req.user.uuid; // 從 token 中取得使用者 ID
+    // 加密密碼
+    let hashedPassword = null;
+    if (pswd != "") {
+        hashedPassword = await bcrypt.hash(pswd, 10);
+    }
 
-    posts.createPost(title, content, summary, tags, authorId, category, (status, result) => {
+    posts.createPost(title, content, summary, tags, authorId, category, hashedPassword, (status, result) => {
         if (status === 0) {
             return res.status(500).json({ error: result });
         }
@@ -46,7 +52,6 @@ router.get("/getCategory", (req, res, next) => {
 
 // 取得所有category
 router.get('/categories', function (req, res, next) {
-    console.log("get all categories");
     posts.getAllCategories((status, result) => {
         if (status === 0) {
             return res.status(500).json({ error: result });
@@ -104,6 +109,11 @@ router.get('/:id', function (req, res, next) {
         if (result === undefined) {
             return res.status(404).json({ error: "Post not found" });
         }
+        if (result.paswd === null) {
+            result.paswd = false;
+        } else {
+            result.paswd = true;
+        }
         return res.json(result);
     });
 });
@@ -134,7 +144,6 @@ router.delete('/:id', authMiddleware, function (req, res, next) {
 
 // 根據文章ID取得文章的留言，不需要驗證
 router.get('/:id/comments', function (req, res, next) {
-    console.log("get comments by post id", req.params.id);
     const postId = req.params.id;
     posts.getCommentsByPostId(postId, (status, result) => {
         if (status === 0) {
@@ -167,7 +176,12 @@ router.post('/:id/comments', async function (req, res, next) {
     // 取得使用者 IP (優先看 x-forwarded-for 避免被 Nginx 蓋掉)
     const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
 
-    // 1. 基本網址
+    // 1. 向 Google 驗證 reCAPTCHA Token
+    // const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}&remoteip=${ipAddress}`;
+    // const recaptchaRes = await fetch(verifyUrl, { method: 'POST' });
+    // const recaptchaData = await recaptchaRes.json();
+
+    // 1. 改為只打基本網址
     const verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
 
     // 2. 使用 URLSearchParams 來自動處理編碼與格式
@@ -192,7 +206,7 @@ router.post('/:id/comments', async function (req, res, next) {
         return res.status(403).json({ error: "機器人驗證失敗，請重新勾選" });
     }
     const finalGuestName = authorId ? null : (guestName || '訪客');
-    console.log("create comment：", postId, content, authorId, finalGuestName, ipAddress);
+    // console.log("create comment：", postId, content, authorId, finalGuestName, ipAddress);
     posts.createComment(postId, content, authorId, finalGuestName, ipAddress, (status, result) => {
         if (status === 0) {
             return res.status(500).json({ error: result });
